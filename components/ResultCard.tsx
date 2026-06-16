@@ -1,26 +1,20 @@
-import RegretMeter from "@/components/RegretMeter";
+import RegretMeter from "./RegretMeter";
 
-type RegretResult = {
-  immediate: string;
-  one_month: string;
-  one_year: string;
-  regret_score: number;
-  advice: string;
-};
-
-export default function ResultCard({ result }: { result: RegretResult }) {
+export default function ResultCard({ data }: any) {
   return (
-    <div className="mt-6 p-5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4">
-      <RegretMeter score={result.regret_score} />
+<div className="card space-y-4">
+      <h2 className="text-xl font-bold">{data.title}</h2>
 
-      <div className="space-y-2 text-sm text-gray-200">
-        <p>🟢 Immediate: {result.immediate}</p>
-        <p>🟡 1 Month: {result.one_month}</p>
-        <p>🔴 1 Year: {result.one_year}</p>
+      <RegretMeter score={data.regret_score} />
+
+      <div className="space-y-2 text-sm">
+        <p><b>Immediately:</b> {data.immediate}</p>
+        <p><b>1 Month:</b> {data.one_month}</p>
+        <p><b>1 Year:</b> {data.one_year}</p>
       </div>
 
-      <div className="p-3 bg-zinc-800 rounded-xl text-sm text-blue-200">
-        💡 {result.advice}
+      <div className="bg-gray-100 p-3 rounded-lg text-sm">
+        💡 {data.advice}
       </div>
     </div>
   );

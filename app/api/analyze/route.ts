@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/groq";
 
 export async function POST(req: Request) {
   try {
     const { text } = await req.json();
 
-    if (!process.env.GROQ_API_KEY) {
+    if (!text) {
       return NextResponse.json(
-        { error: "Missing GROQ_API_KEY" },
-        { status: 500 }
+        { error: "No text provided" },
+        { status: 400 }
       );
     }
 
-    const client = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
-
-    const completion = await client.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         {
@@ -26,11 +22,13 @@ You are RegretGPT.
 
 Return ONLY valid JSON:
 {
-  "immediate": string,
-  "one_month": string,
-  "one_year": string,
-  "regret_score": number (0-100),
-  "advice": string
+  "title": "string",
+  "immediate": "string",
+  "one_month": "string",
+  "one_year": "string",
+  "regret_score": number,
+  "advice": "string",
+  "category": "money | relationships | school | health | other"
 }
           `.trim(),
         },
@@ -42,33 +40,33 @@ Return ONLY valid JSON:
       temperature: 0.7,
     });
 
-    const content = completion.choices[0]?.message?.content;
+    const content = completion.choices?.[0]?.message?.content;
 
     if (!content) {
       return NextResponse.json(
-        { error: "Empty response from Groq" },
+        { error: "Empty response" },
         { status: 500 }
       );
     }
 
-    let data;
+    // SAFE PARSE
     try {
-      data = JSON.parse(content);
+      return NextResponse.json(JSON.parse(content));
     } catch {
-      return NextResponse.json(
-        {
-          error: "Model did not return valid JSON",
-          raw: content,
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        title: "Regret Analysis",
+        immediate: content,
+        one_month: "Unknown",
+        one_year: "Unknown",
+        regret_score: 50,
+        advice: "Model returned non-JSON output",
+        category: "other",
+      });
     }
-
-    return NextResponse.json(data);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Server error";
+  } catch (err: any) {
+    console.error(err);
     return NextResponse.json(
-      { error: message },
+      { error: "Server error" },
       { status: 500 }
     );
   }

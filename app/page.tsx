@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import TextInput from "@/components/TextInput";
-import ResultCard from "@/components/ResultCard";
+import { useEffect, useState } from "react";
 
-type RegretResult = {
+type Result = {
+  id: string;
+  title: string;
   immediate: string;
   one_month: string;
   one_year: string;
@@ -14,84 +14,179 @@ type RegretResult = {
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [result, setResult] = useState<RegretResult | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const [history, setHistory] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [dark, setDark] = useState(false);
 
-  async function analyze() {
-    if (!text.trim()) return;
+  // LOAD MEMORY + THEME
+  useEffect(() => {
+    const saved = localStorage.getItem("regret-history");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setHistory(parsed);
+      } catch {}
+    }
+
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark") setDark(true);
+  }, []);
+
+  // SAVE HISTORY
+  function save(item: Result) {
+    const updated = [item, ...history].slice(0, 10);
+    setHistory(updated);
+    localStorage.setItem("regret-history", JSON.stringify(updated));
+  }
+
+  // ANALYZE
+  async function analyze(input?: string) {
+    const value = input ?? text;
+    if (!value.trim()) return;
 
     setLoading(true);
-    setError("");
     setResult(null);
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: value }),
       });
-
-      if (!res.ok) {
-        throw new Error("API request failed");
-      }
 
       const data = await res.json();
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      const withId: Result = {
+        ...data,
+        id: crypto.randomUUID(),
+      };
 
-      setResult(data);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      setError(message);
+      setResult(withId);
+      save(withId);
+    } catch (err) {
+      console.error(err);
     }
 
     setLoading(false);
   }
 
+  // DELETE ONE
+  function deleteItem(id: string) {
+    const updated = history.filter((item) => item.id !== id);
+    setHistory(updated);
+    localStorage.setItem("regret-history", JSON.stringify(updated));
+  }
+
+  // CLEAR ALL
+  function clearHistory() {
+    setHistory([]);
+    localStorage.removeItem("regret-history");
+  }
+
+  // THEME TOGGLE
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  }
+
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-2xl space-y-6">
+    <div className={`page ${dark ? "dark" : ""}`}>
+      <div className="center">
 
         {/* HEADER */}
-        <div className="text-center space-y-2">
-          <h1 className="text-5xl font-bold tracking-tight">
-            RegretGPT
-          </h1>
-          <p className="text-gray-400">
-            Predict how much you’ll regret your decisions before you make them
-          </p>
+        <div className="topbar">
+          <h1 className="title">💀 RegretGPT</h1>
+
+          <button className="settingsBtn" onClick={toggleTheme}>
+            {dark ? "☀️" : "🌙"}
+          </button>
         </div>
 
+        <p className="subtitle">
+          AI-powered decision simulator
+        </p>
+
         {/* INPUT */}
-        <TextInput value={text} setValue={setText} />
+        <div className="inputCard">
+          <textarea
+            placeholder="Describe your decision..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={300}
+          />
 
-        {/* BUTTON */}
-        <button
-          onClick={analyze}
-          disabled={loading}
-          className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-semibold disabled:opacity-50"
-        >
-          {loading ? "Analyzing..." : "Analyze Decision"}
-        </button>
+          <div className="row">
+            <span className="counter">{text.length}/300</span>
 
-        {/* ERROR */}
-        {error && (
-          <div className="p-4 rounded-xl bg-red-900/40 border border-red-500 text-red-200">
-            ⚠️ {error}
+            <button onClick={() => analyze()}>
+              {loading ? "Analyzing..." : "Analyze"}
+            </button>
+          </div>
+        </div>
+
+        {/* RESULT */}
+        {result && (
+          <div className="card">
+            <h2>{result.title}</h2>
+
+            <p><b>Now:</b> {result.immediate}</p>
+            <p><b>1 Month:</b> {result.one_month}</p>
+            <p><b>1 Year:</b> {result.one_year}</p>
+
+            <div className="meter">
+              <div
+                className="fill"
+                style={{ width: `${result.regret_score}%` }}
+              />
+            </div>
+
+            <p className="advice">💡 {result.advice}</p>
           </div>
         )}
 
-        {/* RESULT */}
-        {result && !error && (
-          <ResultCard result={result} />
+        {/* HISTORY */}
+        {Array.isArray(history) && history.length > 0 && (
+          <div className="history">
+
+            <div className="row" style={{ marginBottom: 10 }}>
+              <h3>Recent Decisions</h3>
+
+              <button onClick={clearHistory}>
+                🗑️ Clear All
+              </button>
+            </div>
+
+            {history.map((item, i) => {
+              if (!item) return null;
+
+              return (
+                <div key={item.id ?? i} className="historyItemWrapper">
+
+                  <div
+                    className="historyItem"
+                    onClick={() => {
+                      setResult(item);
+                      setText(item.title);
+                    }}
+                  >
+                    {item.title}
+                  </div>
+
+                  <button
+                    className="deleteBtn"
+                    onClick={() => deleteItem(item.id)}
+                  >
+                    ✕
+                  </button>
+
+                </div>
+              );
+            })}
+          </div>
         )}
 
       </div>
-    </main>
+    </div>
   );
 }
