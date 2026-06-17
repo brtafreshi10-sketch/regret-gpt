@@ -1,21 +1,52 @@
 import RegretMeter from "./RegretMeter";
 
-export default function ResultCard({ data }: any) {
+type Result = {
+  title: string;
+  immediate: string;
+  one_month: string;
+  one_year: string;
+  regret_score: number;
+  advice: string;
+  category: "money" | "relationships" | "school" | "health" | "other";
+};
+
+const LABELS: Record<Result["category"], string> = {
+  money: "Money",
+  relationships: "Relationships",
+  school: "School",
+  health: "Health",
+  other: "Other",
+};
+
+export default function ResultCard({ data }: { data: Result }) {
   return (
-<div className="card space-y-4">
-      <h2 className="text-xl font-bold">{data.title}</h2>
+    <div className="card resultCard">
+      <div className="resultHeader">
+        <div>
+          <h2>{data.title}</h2>
+          <span className="badge">{LABELS[data.category]}</span>
+        </div>
+        <div className="resultScore">{data.regret_score}% regret</div>
+      </div>
 
       <RegretMeter score={data.regret_score} />
 
-      <div className="space-y-2 text-sm">
-        <p><b>Immediately:</b> {data.immediate}</p>
-        <p><b>1 Month:</b> {data.one_month}</p>
-        <p><b>1 Year:</b> {data.one_year}</p>
+      <div className="resultGrid">
+        <div>
+          <h4>Now</h4>
+          <p>{data.immediate}</p>
+        </div>
+        <div>
+          <h4>1 Month</h4>
+          <p>{data.one_month}</p>
+        </div>
+        <div>
+          <h4>1 Year</h4>
+          <p>{data.one_year}</p>
+        </div>
       </div>
 
-      <div className="bg-gray-100 p-3 rounded-lg text-sm">
-        💡 {data.advice}
-      </div>
+      <div className="advice">💡 {data.advice}</div>
     </div>
   );
 }

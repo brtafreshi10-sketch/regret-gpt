@@ -1,15 +1,16 @@
 export default function RegretMeter({ score }: { score: number }) {
+  const color = score <= 33 ? "#22c55e" : score <= 66 ? "#f59e0b" : "#ef4444";
+
   return (
-    <div className="w-full">
-      <div className="flex justify-between text-sm mb-1">
-        <span>Regret Level</span>
+    <div className="meterWrapper">
+      <div className="meterLabel">
+        <span>Regret level</span>
         <span>{score}%</span>
       </div>
-
-      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+      <div className="meter">
         <div
-          className="h-full bg-red-500 transition-all duration-700"
-          style={{ width: `${score}%` }}
+          className="fill"
+          style={{ width: `${score}%`, backgroundColor: color }}
         />
       </div>
     </div>
