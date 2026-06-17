@@ -1,9 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', 
   images: {
-    unoptimized: true, 
+    unoptimized: true,
   },
   eslint: {
     // This allows the production build to successfully complete 
