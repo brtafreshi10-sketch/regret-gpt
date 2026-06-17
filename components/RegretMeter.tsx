@@ -1,20 +1,36 @@
 export default function RegretMeter({ score }: { score: number }) {
-  const color = score <= 33 ? "#22c55e" : score <= 66 ? "#f59e0b" : "#ef4444";
-  const label = score <= 33 ? "Mild regret" : score <= 66 ? "Moderate regret" : "High regret";
+  const normalized = Number.isFinite(score) ? Math.round(score) : 0;
+  const clamped = Math.max(0, Math.min(100, normalized));
+  const hue = Math.round(122 - clamped * 1.22);
+  const color = `hsl(${hue}, 82%, 52%)`;
+  const badgeBackground = `hsla(${hue}, 82%, 52%, 0.18)`;
+
+  const label =
+    clamped <= 10
+      ? "No regret"
+      : clamped <= 30
+      ? "Minimal regret"
+      : clamped <= 50
+      ? "Mild regret"
+      : clamped <= 70
+      ? "Moderate regret"
+      : clamped <= 90
+      ? "High regret"
+      : "Severe regret";
 
   return (
     <div className="meterWrapper">
       <div className="meterLabel">
         <span>Regret level</span>
-        <span>{score}%</span>
+        <span>{clamped}%</span>
       </div>
       <div className="meter">
         <div
           className="fill"
-          style={{ width: `${score}%`, backgroundColor: color }}
+          style={{ width: `${clamped}%`, backgroundColor: color }}
         />
       </div>
-      <div className="meterBadge" style={{ backgroundColor: `${color}1a`, color }}>
+      <div className="meterBadge" style={{ backgroundColor: badgeBackground, color }}>
         {label}
       </div>
     </div>
