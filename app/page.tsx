@@ -12,6 +12,7 @@ type Result = {
   regret_score: number;
   advice: string;
   category: "money" | "relationships" | "school" | "health" | "other";
+  note?: string;
   createdAt?: string;
 };
 
@@ -40,6 +41,8 @@ export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | Result["category"]>("all");
   const [historySearch, setHistorySearch] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [note, setNote] = useState("");
+  const [noteStatus, setNoteStatus] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function Home() {
     };
 
     setHistory((current) => {
-      const next = [entry, ...current].slice(0, 10);
+      const next = [entry, ...current.filter((historyItem) => historyItem.id !== entry.id)].slice(0, 10);
       if (typeof window !== "undefined") {
         localStorage.setItem("regret-history", JSON.stringify(next));
       }
@@ -100,6 +103,8 @@ export default function Home() {
     setError("");
     setLoading(true);
     setResult(null);
+    setNote("");
+    setNoteStatus("");
 
     try {
       const res = await fetch("/api/analyze", {
@@ -123,6 +128,7 @@ export default function Home() {
       saveHistory(withId);
       setText(value);
       setCopyStatus("");
+      setNote("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unexpected analysis error.";
       setError(message);
@@ -140,6 +146,11 @@ export default function Home() {
       }
       return next;
     });
+    if (result?.id === id) {
+      setResult(null);
+      setNote("");
+      setNoteStatus("");
+    }
   }
 
   function clearHistory() {
@@ -147,6 +158,42 @@ export default function Home() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("regret-history");
     }
+  }
+
+  function handleHistorySelect(item: Result) {
+    setResult(item);
+    setText(item.title);
+    setNote(item.note ?? "");
+    setCopyStatus("");
+    setNoteStatus("");
+  }
+
+  function saveNote() {
+    if (!result) return;
+
+    const updated = {
+      ...result,
+      note: note.trim(),
+    };
+
+    setResult(updated);
+    saveHistory(updated);
+    setNoteStatus("Note saved to history.");
+  }
+
+  function downloadAnalysis() {
+    if (!result) return;
+
+    const payload = `RegretGPT Decision Report\n\nTitle: ${result.title}\nCategory: ${CATEGORY_LABELS[result.category]}\nRegret: ${result.regret_score}%\n\nNow:\n${result.immediate}\n\n1 Month:\n${result.one_month}\n\n1 Year:\n${result.one_year}\n\nAdvice:\n${result.advice}\n\nNote:\n${result.note ?? "(none)"}\n`;
+    const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = `regret-report-${result.id}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(href);
   }
 
   function toggleTheme() {
@@ -283,12 +330,29 @@ export default function Home() {
           <section className="resultSection">
             <div className="resultActions">
               <button className="primaryBtn" onClick={copyAnalysis}>Copy result</button>
+              <button className="secondaryBtn" type="button" onClick={downloadAnalysis}>Download report</button>
               <button className="secondaryBtn" type="button" onClick={shareAnalysis}>Share</button>
               <button className="secondaryBtn" type="button" onClick={() => analyze(result.title)}>
                 Re-run
               </button>
             </div>
             {copyStatus && <div className="status success">{copyStatus}</div>}
+            <div className="noteSection">
+              <h3 className="sectionTitle">Personal note</h3>
+              <textarea
+                className="noteTextarea"
+                placeholder="Write a follow-up thought, reminder, or why this decision matters to you."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
+              />
+              <div className="row actionRow">
+                <button className="primaryBtn" disabled={!result} onClick={saveNote}>
+                  Save note
+                </button>
+                {noteStatus && <span className="status success">{noteStatus}</span>}
+              </div>
+            </div>
             <ResultCard data={result} />
           </section>
         )}
@@ -350,10 +414,7 @@ export default function Home() {
                   <button
                     type="button"
                     className="historyLink"
-                    onClick={() => {
-                      setResult(item);
-                      setText(item.title);
-                    }}
+                    onClick={() => handleHistorySelect(item)}
                   >
                     <div>
                       <strong>{item.title}</strong>
