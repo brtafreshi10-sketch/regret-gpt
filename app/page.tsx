@@ -264,8 +264,22 @@ export default function Home() {
       <div className="center">
         <header className="topbar">
           <div>
-            <h1 className="title">💀 RegretGPT</h1>
-            <p className="subtitle">
+            <h1 className="title">
+              <span className="titleIcon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="skullGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f8fafc" />
+                      <stop offset="100%" stopColor="#c7d2fe" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M32 4c-9.94 0-18 8.06-18 18v3.5c0 5.2 4.2 9.5 9.4 9.5h1.2c.7 0 1.4-.5 1.4-1.2v-4.8c0-2.5 2.1-4.6 4.6-4.6h4.8c2.5 0 4.6 2.1 4.6 4.6v4.8c0 .7.6 1.2 1.4 1.2h1.2c5.2 0 9.4-4.3 9.4-9.5V22C50 12.06 41.94 4 32 4z" fill="url(#skullGradient)" stroke="#64748b" strokeWidth="3" />
+                  <ellipse cx="22" cy="28" rx="5" ry="7" fill="#0f172a" />
+                  <ellipse cx="42" cy="28" rx="5" ry="7" fill="#0f172a" />
+                  <path d="M20 42c2 3 5 5 12 5s10-2 12-5" stroke="#0f172a" strokeWidth="4" fill="none" strokeLinecap="round" />
+                  <path d="M24 49c3 3 8 5 16 0" stroke="#64748b" strokeWidth="4" fill="none" strokeLinecap="round" />
+                </svg>
+              </span>
               Simulate how a decision feels today, in one month, and in one year.
             </p>
           </div>

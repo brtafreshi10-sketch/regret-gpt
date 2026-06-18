@@ -107,10 +107,25 @@ body {
   margin: 0;
   letter-spacing: -0.06em;
   line-height: 1.02;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
   background: linear-gradient(90deg, #7c3aed, #2563eb);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.titleIcon {
+  display: inline-flex;
+  width: 2.3rem;
+  height: 2.3rem;
+  flex-shrink: 0;
+}
+
+.titleIcon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .subtitle {
