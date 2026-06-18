@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { groq } from "../../../lib/groq";
+import { getGroqClient } from "../../../lib/groq";
 
 type RegretCategory = "money" | "relationships" | "school" | "health" | "other";
 type AnalysisResult = {
@@ -115,6 +115,7 @@ export async function POST(req: Request) {
 Return only the JSON object and nothing else.`;
 
   try {
+    const groq = getGroqClient();
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
