@@ -674,12 +674,31 @@ historyLink:hover strong {
   box-shadow: 0 16px 32px rgba(99, 102, 241, 0.08);
 }
 
+html.dark .page,
 .page.dark {
   --background: radial-gradient(circle at top, #090b12, #04060c);
+  --surface: rgba(15, 23, 42, 0.82);
+  --surface-strong: rgba(15, 23, 42, 0.94);
+  --border: rgba(148, 163, 184, 0.18);
+  --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+  --text-color: #f8fafc;
+  --text-muted: #cbd5e1;
+  --input-bg: rgba(15, 23, 42, 0.9);
+  --input-border: rgba(148, 163, 184, 0.28);
+  --input-color: #f8fafc;
+  --secondary: rgba(148, 163, 184, 0.12);
+  --secondary-text: #e2e8f0;
   color: #eef2ff;
   background: var(--background);
 }
 
+html.dark .page .inputCard,
+html.dark .page .resultSection,
+html.dark .page .infoCard,
+html.dark .page .historyPanel,
+html.dark .page .statCard,
+html.dark .page .historyItem,
+html.dark .page .card,
 .page.dark .inputCard,
 .page.dark .resultSection,
 .page.dark .infoCard,
@@ -691,6 +710,8 @@ historyLink:hover strong {
   border-color: rgba(148, 163, 184, 0.18);
 }
 
+html.dark .page textarea,
+html.dark .page .searchInput,
 .page.dark textarea,
 .page.dark .searchInput {
   background: rgba(15, 23, 42, 0.84);
@@ -698,16 +719,27 @@ historyLink:hover strong {
   color: #f8fafc;
 }
 
+html.dark .page textarea:focus,
+html.dark .page .searchInput:focus,
 .page.dark textarea:focus,
 .page.dark .searchInput:focus {
   box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.18);
 }
 
+html.dark .page .topbar,
 .page.dark .topbar {
   background: rgba(15, 23, 42, 0.88);
   border-color: rgba(148, 163, 184, 0.18);
 }
 
+html.dark .page .subtitle,
+html.dark .page .sectionDescription,
+html.dark .page .historyMeta,
+html.dark .page .hintText,
+html.dark .page .statLabel,
+html.dark .page .resultScore,
+html.dark .page .emptyState,
+html.dark .page .status,
 .page.dark .subtitle,
 .page.dark .sectionDescription,
 .page.dark .historyMeta,
@@ -719,6 +751,10 @@ historyLink:hover strong {
   color: #cbd5e1;
 }
 
+html.dark .page .secondaryBtn,
+html.dark .page .settingsBtn,
+html.dark .page .chip,
+html.dark .page .pill,
 .page.dark .secondaryBtn,
 .page.dark .settingsBtn,
 .page.dark .chip,
@@ -727,39 +763,48 @@ historyLink:hover strong {
   color: #e2e8f0;
 }
 
+html.dark .page .chip:hover,
+html.dark .page .pill:hover,
 .page.dark .chip:hover,
 .page.dark .pill:hover {
   background: rgba(148, 163, 184, 0.2);
 }
 
+html.dark .page .pill.active,
 .page.dark .pill.active {
   background: #6366f1;
   color: white;
 }
 
+html.dark .page .advice,
 .page.dark .advice {
   background: rgba(30, 41, 59, 0.78);
 }
 
+html.dark .page .status.error,
 .page.dark .status.error {
   background: #881a2a;
   color: #ffe4e6;
 }
 
+html.dark .page .status.success,
 .page.dark .status.success {
   background: #14532d;
   color: #d1fae5;
 }
 
+html.dark .page .emptyState,
 .page.dark .emptyState {
   background: rgba(148, 163, 184, 0.08);
 }
 
+html.dark .page .deleteBtn,
 .page.dark .deleteBtn {
   background: #dc2626;
 }
 
 /* Ensure foreground text is readable in dark mode */
+html.dark .page,
 .page.dark {
   color: var(--text-color);
 }
