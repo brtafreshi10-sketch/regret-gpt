@@ -17,6 +17,18 @@ type Result = {
   createdAt?: string;
 };
 
+type UserRecord = {
+  password: string;
+  createdAt: string;
+  displayName: string;
+};
+
+type UserSummary = {
+  email: string;
+  displayName: string;
+  createdAt: string;
+};
+
 const CATEGORY_LABELS: Record<Result["category"] | "all", string> = {
   all: "All",
   money: "Money",
@@ -39,12 +51,17 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [dark, setDark] = useState(false);
   const [error, setError] = useState("");
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<null | "login" | "signup">(null);
+  const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authConfirmPassword, setAuthConfirmPassword] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | Result["category"]>("all");
   const [historySearch, setHistorySearch] = useState("");
+  const [profiles, setProfiles] = useState<UserSummary[]>([]);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
   const [note, setNote] = useState("");
   const [noteStatus, setNoteStatus] = useState("");
@@ -54,11 +71,23 @@ export default function Home() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
     const savedUser = localStorage.getItem("regret-current-user");
-    if (savedUser) setCurrentUser(savedUser);
-    const historyKey = `regret-history-${savedUser ?? "public"}`;
-    const savedHistory = localStorage.getItem(historyKey);
+    if (savedUser) setCurrentUserEmail(savedUser);
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedUsers = getUsers();
+    const userList = Object.entries(savedUsers).map(([email, data]) => ({
+      email,
+      displayName: data.displayName,
+      createdAt: data.createdAt,
+    }));
+    setProfiles(userList);
+
+    if (savedUser && savedUsers[savedUser]) {
+      setCurrentUserName(savedUsers[savedUser].displayName);
+    }
+
+    const historyKey = `regret-history-${savedUser ?? "public"}`;
+    const savedHistory = localStorage.getItem(historyKey);
 
     if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker
@@ -107,6 +136,39 @@ export default function Home() {
     }
   }, [dark]);
 
+  function normalizeEmail(email: string) {
+    return email.trim().toLowerCase();
+  }
+
+  function getUsers(): Record<string, UserRecord> {
+    try {
+      const raw = localStorage.getItem("regret-users");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveUsers(u: Record<string, UserRecord>) {
+    localStorage.setItem("regret-users", JSON.stringify(u));
+  }
+
+  function loadHistoryForUser(email: string | null) {
+    if (typeof window === "undefined") return;
+    const key = `regret-history-${email ?? "public"}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      setHistory([]);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      setHistory(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setHistory([]);
+    }
+  }
+
   function saveHistory(item: Result) {
     const entry = {
       ...item,
@@ -116,7 +178,7 @@ export default function Home() {
     setHistory((current) => {
       const next = [entry, ...current.filter((historyItem) => historyItem.id !== entry.id)].slice(0, 10);
       if (typeof window !== "undefined") {
-        const key = `regret-history-${currentUser ?? "public"}`;
+        const key = `regret-history-${currentUserEmail ?? "public"}`;
         localStorage.setItem(key, JSON.stringify(next));
       }
       return next;
@@ -172,7 +234,7 @@ export default function Home() {
     setHistory((current) => {
       const next = current.filter((item) => item.id !== id);
       if (typeof window !== "undefined") {
-        const key = `regret-history-${currentUser ?? "public"}`;
+        const key = `regret-history-${currentUserEmail ?? "public"}`;
         localStorage.setItem(key, JSON.stringify(next));
       }
       return next;
@@ -187,70 +249,124 @@ export default function Home() {
   function clearHistory() {
     setHistory([]);
     if (typeof window !== "undefined") {
-      const key = `regret-history-${currentUser ?? "public"}`;
+      const key = `regret-history-${currentUserEmail ?? "public"}`;
       localStorage.removeItem(key);
     }
   }
 
-  /* Simple client-side auth (localStorage-backed) */
-  function getUsers(): Record<string, { password: string; createdAt: string }> {
-    try {
-      const raw = localStorage.getItem("regret-users");
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
+  function validateEmail(email: string) {
+    const normalized = normalizeEmail(email);
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailPattern.test(normalized);
   }
 
-  function saveUsers(u: Record<string, { password: string; createdAt: string }>) {
-    localStorage.setItem("regret-users", JSON.stringify(u));
+  function validatePassword(password: string) {
+    return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password);
+  }
+
+  function validateDisplayName(name: string) {
+    return name.trim().length >= 2 && name.trim().length <= 30;
+  }
+
+  function refreshProfiles() {
+    const users = getUsers();
+    const list = Object.entries(users).map(([email, data]) => ({
+      email,
+      displayName: data.displayName,
+      createdAt: data.createdAt,
+    }));
+    setProfiles(list);
   }
 
   function signup() {
     setError("");
-    if (!authEmail || !authPassword) {
-      setError("Please provide email and password to sign up.");
+    const email = normalizeEmail(authEmail);
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address.");
       return;
     }
+    if (!validateDisplayName(authName)) {
+      setError("Display name must be 2 to 30 characters.");
+      return;
+    }
+    if (!validatePassword(authPassword)) {
+      setError("Password must be at least 8 characters and include upper/lowercase letters and a number.");
+      return;
+    }
+    if (authPassword !== authConfirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     const users = getUsers();
-    if (users[authEmail]) {
+    if (users[email]) {
       setError("An account with this email already exists.");
       return;
     }
-    users[authEmail] = { password: authPassword, createdAt: new Date().toISOString() };
+
+    users[email] = {
+      password: authPassword,
+      createdAt: new Date().toISOString(),
+      displayName: authName.trim(),
+    };
     saveUsers(users);
-    localStorage.setItem("regret-current-user", authEmail);
-    setCurrentUser(authEmail);
+    refreshProfiles();
+    localStorage.setItem("regret-current-user", email);
+    setCurrentUserEmail(email);
+    setCurrentUserName(authName.trim());
     setAuthModal(null);
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthConfirmPassword("");
+    setAuthName("");
+    loadHistoryForUser(email);
   }
 
   function login() {
     setError("");
-    if (!authEmail || !authPassword) {
-      setError("Please enter email and password to log in.");
+    const email = normalizeEmail(authEmail);
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!authPassword) {
+      setError("Please enter your password.");
       return;
     }
     const users = getUsers();
-    const user = users[authEmail];
+    const user = users[email];
     if (!user || user.password !== authPassword) {
       setError("Invalid email or password.");
       return;
     }
-    localStorage.setItem("regret-current-user", authEmail);
-    setCurrentUser(authEmail);
+    localStorage.setItem("regret-current-user", email);
+    setCurrentUserEmail(email);
+    setCurrentUserName(user.displayName);
     setAuthModal(null);
-    // load user-specific history
-    try {
-      const key = `regret-history-${authEmail}`;
-      const raw = localStorage.getItem(key);
-      if (raw) setHistory(JSON.parse(raw));
-    } catch {}
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthConfirmPassword("");
+    setAuthName("");
+    loadHistoryForUser(email);
   }
 
   function logout() {
     localStorage.removeItem("regret-current-user");
-    setCurrentUser(null);
+    setCurrentUserEmail(null);
+    setCurrentUserName(null);
     setHistory([]);
+    setProfileMenuOpen(false);
+  }
+
+  function switchProfile(email: string) {
+    const users = getUsers();
+    const user = users[email];
+    if (!user) return;
+    localStorage.setItem("regret-current-user", email);
+    setCurrentUserEmail(email);
+    setCurrentUserName(user.displayName);
+    setProfileMenuOpen(false);
+    loadHistoryForUser(email);
   }
 
   function handleHistorySelect(item: Result) {
@@ -365,11 +481,37 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
-            {currentUser ? (
+          <div style={{display: 'flex', gap: 8, alignItems: 'center', position: 'relative'}}>
+            {currentUserEmail ? (
               <>
-                <span aria-live="polite">Signed in as <strong>{currentUser}</strong></span>
-                <button className="secondaryBtn" onClick={logout}>Log out</button>
+                <button
+                  className="secondaryBtn"
+                  onClick={() => setProfileMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileMenuOpen}
+                >
+                  {currentUserName ? `Hi, ${currentUserName}` : currentUserEmail}
+                </button>
+                {profileMenuOpen && (
+                  <div className="profileMenu" role="menu">
+                    <div className="profileMenuHeader">Profiles</div>
+                    {profiles.map((profile) => (
+                      <button
+                        key={profile.email}
+                        type="button"
+                        className="profileMenuItem"
+                        role="menuitem"
+                        onClick={() => switchProfile(profile.email)}
+                      >
+                        <strong>{profile.displayName}</strong>
+                        <span>{profile.email}</span>
+                      </button>
+                    ))}
+                    <button className="profileMenuItem" type="button" onClick={logout}>
+                      Log out
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -470,6 +612,12 @@ export default function Home() {
           <div className="authOverlay" role="dialog" aria-modal="true">
             <div className="authModal">
               <h3>{authModal === 'signup' ? 'Create an account' : 'Log in'}</h3>
+              {authModal === 'signup' && (
+                <label>
+                  Display name
+                  <input value={authName} onChange={(e) => setAuthName(e.target.value)} type="text" />
+                </label>
+              )}
               <label>
                 Email
                 <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} type="email" />
@@ -478,6 +626,12 @@ export default function Home() {
                 Password
                 <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} type="password" />
               </label>
+              {authModal === 'signup' && (
+                <label>
+                  Confirm password
+                  <input value={authConfirmPassword} onChange={(e) => setAuthConfirmPassword(e.target.value)} type="password" />
+                </label>
+              )}
               {error && <div className="status error" role="alert">{error}</div>}
               <div style={{display: 'flex', gap: 8, marginTop: 12}}>
                 <button className="primaryBtn" onClick={() => (authModal === 'signup' ? signup() : login())}>
@@ -485,6 +639,11 @@ export default function Home() {
                 </button>
                 <button className="secondaryBtn" onClick={() => setAuthModal(null)}>Cancel</button>
               </div>
+              {authModal === 'signup' ? (
+                <p className="authHint">Password must be 8+ characters, and include upper/lowercase letters plus a number.</p>
+              ) : (
+                <p className="authHint">Use the email and password you registered with.</p>
+              )}
             </div>
           </div>
         )}
