@@ -137,9 +137,13 @@ Return only the JSON object and nothing else.`;
 
     return NextResponse.json(normalizeResult(parsed));
   } catch (error: unknown) {
-    console.error(error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to generate analysis. Please try again later.";
+    console.error("RegretGPT analyze error:", message, error);
     return NextResponse.json(
-      { error: "Unable to generate analysis. Please try again later." },
+      { error: message },
       { status: 500 }
     );
   }

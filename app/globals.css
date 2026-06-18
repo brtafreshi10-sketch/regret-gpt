@@ -116,16 +116,11 @@ body {
   color: transparent;
 }
 
-.titleIcon {
-  display: inline-flex;
-  width: 2.3rem;
-  height: 2.3rem;
-  flex-shrink: 0;
-}
-
-.titleIcon svg {
-  width: 100%;
-  height: 100%;
+.titleEmoji {
+  font-size: 1.1em;
+  color: #7c3aed;
+  -webkit-text-fill-color: #7c3aed;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 .subtitle {
