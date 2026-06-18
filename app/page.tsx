@@ -280,6 +280,9 @@ export default function Home() {
                   <path d="M24 49c3 3 8 5 16 0" stroke="#64748b" strokeWidth="4" fill="none" strokeLinecap="round" />
                 </svg>
               </span>
+              RegretGPT
+            </h1>
+            <p className="subtitle">
               Simulate how a decision feels today, in one month, and in one year.
             </p>
           </div>
