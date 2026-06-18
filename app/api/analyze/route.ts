@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { groq } from "@/lib/groq";
+import { groq } from "../../../lib/groq";
 
 type RegretCategory = "money" | "relationships" | "school" | "health" | "other";
 type AnalysisResult = {
