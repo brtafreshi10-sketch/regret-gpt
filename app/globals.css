@@ -742,6 +742,51 @@ button:disabled {
   background: #dc2626;
 }
 
+/* Ensure foreground text is readable in dark mode */
+.page.dark {
+  color: var(--text-color);
+}
+
+.page.dark h1,
+.page.dark h2,
+.page.dark h3,
+.page.dark h4,
+.page.dark p,
+.page.dark span,
+.page.dark strong,
+.page.dark a,
+.page.dark li,
+.page.dark input,
+.page.dark button,
+.page.dark label {
+  color: var(--text-color) !important;
+}
+
+/* Muted text should use the muted token */
+.page.dark .subtitle,
+.page.dark .sectionDescription,
+.page.dark .historyMeta,
+.page.dark .hintText,
+.page.dark .statLabel,
+.page.dark .resultScore,
+.page.dark .emptyState,
+.page.dark .status,
+.page.dark .noteCard p,
+.page.dark .resultGrid p {
+  color: var(--text-muted) !important;
+}
+
+/* Specific overrides for components that previously used hard colors */
+.page.dark .noteCard h3,
+.page.dark .historyLink strong,
+.page.dark .historyLink:hover strong,
+.page.dark .statCard strong,
+.page.dark .meterValue,
+.page.dark .meterBadge,
+.page.dark .resultGrid h4 {
+  color: var(--text-color) !important;
+}
+
 @media (max-width: 820px) {
   .statsGrid {
     grid-template-columns: 1fr;
