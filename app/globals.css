@@ -20,6 +20,22 @@
   --danger-hover: #dc2626;
 }
 
+/* Support early dark-mode via html.dark so styles apply before hydration */
+html.dark .page {
+  --background: radial-gradient(circle at top, #090b12, #04060c);
+  --surface: rgba(15, 23, 42, 0.82);
+  --surface-strong: rgba(15, 23, 42, 0.94);
+  --border: rgba(148, 163, 184, 0.18);
+  --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+  --text-color: #f8fafc;
+  --text-muted: #cbd5e1;
+  --input-bg: rgba(15, 23, 42, 0.9);
+  --input-border: rgba(148, 163, 184, 0.28);
+  --input-color: #f8fafc;
+  --secondary: rgba(148, 163, 184, 0.12);
+  --secondary-text: #e2e8f0;
+}
+
 .page.dark {
   --background: radial-gradient(circle at top, #090b12, #04060c);
   --surface: rgba(15, 23, 42, 0.82);
