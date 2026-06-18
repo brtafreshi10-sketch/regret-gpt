@@ -51,6 +51,7 @@ export default function Home() {
 
     const savedHistory = localStorage.getItem("regret-history");
     const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker
@@ -74,10 +75,30 @@ export default function Home() {
         }
       }
 
-      setDark(savedTheme === "dark");
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        setDark(savedTheme === "dark");
+      } else {
+        setDark(prefersDark);
+      }
       setHydrated(true);
     });
   }, []);
+
+  useEffect(() => {
+    // Update mobile/browser UI color for theme
+    try {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', dark ? '#0f172a' : '#6366f1');
+      }
+      const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (apple) {
+        apple.setAttribute('content', dark ? 'black-translucent' : 'default');
+      }
+    } catch (e) {
+      // ignore in SSR or restricted contexts
+    }
+  }, [dark]);
 
   function saveHistory(item: Result) {
     const entry = {
