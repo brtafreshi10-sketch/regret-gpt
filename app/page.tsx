@@ -21,12 +21,16 @@ type UserRecord = {
   password: string;
   createdAt: string;
   displayName: string;
+  isPaid: boolean;
+  subscriptionDate?: string;
 };
 
 type UserSummary = {
   email: string;
   displayName: string;
   createdAt: string;
+  isPaid: boolean;
+  subscriptionDate?: string;
 };
 
 const CATEGORY_LABELS: Record<Result["category"] | "all", string> = {
@@ -36,6 +40,19 @@ const CATEGORY_LABELS: Record<Result["category"] | "all", string> = {
   school: "School",
   health: "Health",
   other: "Other",
+};
+
+const FREE_DAILY_LIMIT = 5;
+
+const PREMIUM_PLAN = {
+  name: "Premium",
+  price: "$5/mo",
+  description: "Unlimited analysis, extended history, and priority AI response.",
+  features: [
+    "50 saved decisions",
+    "Priority AI requests",
+    "Premium support",
+  ],
 };
 
 const EXAMPLES = [
@@ -58,6 +75,11 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+  const [currentUserPaid, setCurrentUserPaid] = useState(false);
+  const [billingModal, setBillingModal] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [billingProcessing, setBillingProcessing] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<"all" | Result["category"]>("all");
   const [historySearch, setHistorySearch] = useState("");
   const [profiles, setProfiles] = useState<UserSummary[]>([]);
@@ -65,6 +87,7 @@ export default function Home() {
   const [copyStatus, setCopyStatus] = useState("");
   const [note, setNote] = useState("");
   const [noteStatus, setNoteStatus] = useState("");
+  const [dailyUsage, setDailyUsage] = useState(0);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -79,11 +102,15 @@ export default function Home() {
       email,
       displayName: data.displayName,
       createdAt: data.createdAt,
+      isPaid: Boolean(data.isPaid),
+      subscriptionDate: data.subscriptionDate,
     }));
     setProfiles(userList);
 
     if (savedUser && savedUsers[savedUser]) {
       setCurrentUserName(savedUsers[savedUser].displayName);
+      setCurrentUserPaid(Boolean(savedUsers[savedUser].isPaid));
+      loadDailyUsage(savedUser);
     }
 
     const historyKey = `regret-history-${savedUser ?? "public"}`;
@@ -153,6 +180,10 @@ export default function Home() {
     localStorage.setItem("regret-users", JSON.stringify(u));
   }
 
+  function getUsageKey(email: string | null) {
+    return `regret-daily-usage-${email ?? "public"}`;
+  }
+
   function loadHistoryForUser(email: string | null) {
     if (typeof window === "undefined") return;
     const key = `regret-history-${email ?? "public"}`;
@@ -169,6 +200,34 @@ export default function Home() {
     }
   }
 
+  function loadDailyUsage(email: string | null) {
+    if (typeof window === "undefined") return;
+    const key = getUsageKey(email);
+    const raw = localStorage.getItem(key);
+    const today = new Date().toISOString().slice(0, 10);
+    if (!raw) {
+      setDailyUsage(0);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.date === today && typeof parsed.count === "number") {
+        setDailyUsage(parsed.count);
+      } else {
+        setDailyUsage(0);
+      }
+    } catch {
+      setDailyUsage(0);
+    }
+  }
+
+  function saveDailyUsage(email: string | null, count: number) {
+    if (typeof window === "undefined") return;
+    const key = getUsageKey(email);
+    localStorage.setItem(key, JSON.stringify({ date: new Date().toISOString().slice(0, 10), count }));
+  }
+
   function saveHistory(item: Result) {
     const entry = {
       ...item,
@@ -176,7 +235,8 @@ export default function Home() {
     };
 
     setHistory((current) => {
-      const next = [entry, ...current.filter((historyItem) => historyItem.id !== entry.id)].slice(0, 10);
+      const maxEntries = currentUserPaid ? 50 : 10;
+      const next = [entry, ...current.filter((historyItem) => historyItem.id !== entry.id)].slice(0, maxEntries);
       if (typeof window !== "undefined") {
         const key = `regret-history-${currentUserEmail ?? "public"}`;
         localStorage.setItem(key, JSON.stringify(next));
@@ -187,8 +247,16 @@ export default function Home() {
 
   async function analyze(input?: string) {
     const value = input ?? text;
+    if (!currentUserEmail) {
+      setError("Please sign in to analyze decisions.");
+      return;
+    }
     if (!value.trim()) {
       setError("Please describe a decision before analyzing.");
+      return;
+    }
+    if (!currentUserPaid && dailyUsage >= FREE_DAILY_LIMIT) {
+      setError("Your free daily limit is reached. Upgrade to Premium for unlimited analysis.");
       return;
     }
 
@@ -218,6 +286,11 @@ export default function Home() {
 
       setResult(withId);
       saveHistory(withId);
+      if (!currentUserPaid) {
+        const nextUsage = dailyUsage + 1;
+        setDailyUsage(nextUsage);
+        saveDailyUsage(currentUserEmail, nextUsage);
+      }
       setText(value);
       setCopyStatus("");
       setNote("");
@@ -274,6 +347,8 @@ export default function Home() {
       email,
       displayName: data.displayName,
       createdAt: data.createdAt,
+      isPaid: Boolean(data.isPaid),
+      subscriptionDate: data.subscriptionDate,
     }));
     setProfiles(list);
   }
@@ -308,6 +383,7 @@ export default function Home() {
       password: authPassword,
       createdAt: new Date().toISOString(),
       displayName: authName.trim(),
+      isPaid: false,
     };
     saveUsers(users);
     refreshProfiles();
@@ -320,6 +396,7 @@ export default function Home() {
     setAuthConfirmPassword("");
     setAuthName("");
     loadHistoryForUser(email);
+    loadDailyUsage(email);
   }
 
   function login() {
@@ -342,18 +419,21 @@ export default function Home() {
     localStorage.setItem("regret-current-user", email);
     setCurrentUserEmail(email);
     setCurrentUserName(user.displayName);
+    setCurrentUserPaid(Boolean(user.isPaid));
     setAuthModal(null);
     setAuthEmail("");
     setAuthPassword("");
     setAuthConfirmPassword("");
     setAuthName("");
     loadHistoryForUser(email);
+    loadDailyUsage(email);
   }
 
   function logout() {
     localStorage.removeItem("regret-current-user");
     setCurrentUserEmail(null);
     setCurrentUserName(null);
+    setCurrentUserPaid(false);
     setHistory([]);
     setProfileMenuOpen(false);
   }
@@ -365,9 +445,103 @@ export default function Home() {
     localStorage.setItem("regret-current-user", email);
     setCurrentUserEmail(email);
     setCurrentUserName(user.displayName);
+    setCurrentUserPaid(Boolean(user.isPaid));
     setProfileMenuOpen(false);
     loadHistoryForUser(email);
+    loadDailyUsage(email);
   }
+
+  function openBillingModal() {
+    setBillingModal(true);
+    setPaymentError("");
+    setCheckoutMessage(null);
+  }
+
+  function closeBillingModal() {
+    setBillingModal(false);
+    setPaymentError("");
+    setBillingProcessing(false);
+  }
+
+  async function startCheckout() {
+    if (!currentUserEmail) {
+      setPaymentError("Please sign in before upgrading.");
+      return;
+    }
+
+    setPaymentError("");
+    setBillingProcessing(true);
+
+    try {
+      const response = await fetch("/api/checkout/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: currentUserEmail,
+          successUrl: `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: window.location.origin,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to start checkout.");
+      }
+
+      if (!data.url) {
+        throw new Error("Stripe checkout session failed to create.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start payment.";
+      setPaymentError(message);
+    } finally {
+      setBillingProcessing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (!sessionId || !currentUserEmail) return;
+
+    async function verifyCheckout() {
+      try {
+        const response = await fetch(`/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setPaymentError(data?.error || "Unable to verify payment session.");
+          return;
+        }
+
+        if (data.customer_email !== currentUserEmail) {
+          setPaymentError("The checked-out account does not match the current user.");
+          return;
+        }
+
+        const users = getUsers();
+        const user = users[currentUserEmail];
+        if (user) {
+          user.isPaid = true;
+          user.subscriptionDate = new Date().toISOString();
+          saveUsers(users);
+          setCurrentUserPaid(true);
+          refreshProfiles();
+          setCheckoutMessage("Your Premium subscription is now active.");
+        }
+
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to verify checkout.";
+        setPaymentError(message);
+      }
+    }
+
+    verifyCheckout();
+  }, [hydrated, currentUserEmail]);
 
   function handleHistorySelect(item: Result) {
     setResult(item);
@@ -491,6 +665,7 @@ export default function Home() {
                   aria-expanded={profileMenuOpen}
                 >
                   {currentUserName ? `Hi, ${currentUserName}` : currentUserEmail}
+                  {currentUserPaid ? " ★" : ""}
                 </button>
                 {profileMenuOpen && (
                   <div className="profileMenu" role="menu">
@@ -504,9 +679,18 @@ export default function Home() {
                         onClick={() => switchProfile(profile.email)}
                       >
                         <strong>{profile.displayName}</strong>
-                        <span>{profile.email}</span>
+                        <span>{profile.email} {profile.isPaid ? "· Premium" : ""}</span>
                       </button>
                     ))}
+                    <div className="profileMenuDivider" />
+                    <div className="profileMenuStatus">
+                      <span>{currentUserPaid ? "Premium member" : "Free account"}</span>
+                      {!currentUserPaid && (
+                        <button className="primaryBtn upgradeBtn" type="button" onClick={openBillingModal}>
+                          Upgrade to Premium
+                        </button>
+                      )}
+                    </div>
                     <button className="profileMenuItem" type="button" onClick={logout}>
                       Log out
                     </button>
@@ -551,7 +735,11 @@ export default function Home() {
           />
 
           <div className="row actionRow">
-            <button className="primaryBtn" disabled={!text.trim() || loading} onClick={() => analyze()}>
+            <button
+              className="primaryBtn"
+              disabled={!text.trim() || loading || !currentUserEmail}
+              onClick={() => analyze()}
+            >
               {loading ? "Analyzing..." : "Analyze decision"}
             </button>
             <button className="secondaryBtn" type="button" onClick={clearInput}>
@@ -561,11 +749,29 @@ export default function Home() {
 
           <div className="buttonGroup">
             {EXAMPLES.map((example) => (
-              <button key={example} type="button" className="chip" onClick={() => analyze(example)}>
+              <button
+                key={example}
+                type="button"
+                className="chip"
+                onClick={() => analyze(example)}
+                disabled={!currentUserEmail}
+              >
                 {example}
               </button>
             ))}
           </div>
+
+          {!currentUserEmail ? (
+            <div className="status warning">
+              Sign in to access free daily analysis and saved history.
+            </div>
+          ) : !currentUserPaid ? (
+            <div className="status warning">
+              Free users get {dailyUsage}/{FREE_DAILY_LIMIT} analyses today. Upgrade to Premium for unlimited analysis and extended history.              <button className="linkButton" type="button" onClick={openBillingModal}>
+                View plans
+              </button>
+            </div>
+          ) : null}
 
           {error && <div className="status error">{error}</div>}
         </section>
@@ -576,6 +782,41 @@ export default function Home() {
             RegretGPT uses AI to help you think through outcomes and see what your decision may feel like over time. Use the history tools to compare past ideas and improve your decision process.
           </p>
         </section>
+
+        {currentUserEmail && !currentUserPaid && (
+          <section className="billingPromoCard">
+            <div>
+              <h3>Start your Premium plan</h3>
+              <p>Unlock analysis, extended history, and priority results with a real paid subscription.</p>
+              <div className="billingPlanSummary">
+                <strong>{PREMIUM_PLAN.price}</strong>
+                <span>{PREMIUM_PLAN.description}</span>
+              </div>
+              <button className="primaryBtn" type="button" onClick={openBillingModal}>
+                Upgrade to Premium
+              </button>
+            </div>
+          </section>
+        )}
+
+        {currentUserEmail && currentUserPaid && (
+          <section className="billingPromoCard premiumActive">
+            <div>
+              <h3>Premium account active</h3>
+              <p>You have full access to analysis and extended history. Thank you for subscribing.</p>
+              <div className="billingPlanSummary">
+                <strong>{PREMIUM_PLAN.price}</strong>
+                <span>{PREMIUM_PLAN.description}</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {checkoutMessage && (
+          <section className="status success checkoutMessage">
+            {checkoutMessage}
+          </section>
+        )}
 
         {result && (
           <section className="resultSection">
@@ -644,6 +885,36 @@ export default function Home() {
               ) : (
                 <p className="authHint">Use the email and password you registered with.</p>
               )}
+            </div>
+          </div>
+        )}
+
+        {billingModal && (
+          <div className="authOverlay" role="dialog" aria-modal="true">
+            <div className="billingModal">
+              <h3>Upgrade to {PREMIUM_PLAN.name}</h3>
+              <p className="billingDescription">{PREMIUM_PLAN.description}</p>
+              <div className="billingPlan">
+                <strong>{PREMIUM_PLAN.price}</strong>
+                <span>Monthly subscription</span>
+              </div>
+              <ul className="billingFeatures">
+                {PREMIUM_PLAN.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <p className="billingNotice">
+                You will be redirected to Stripe Checkout to complete your purchase securely.
+              </p>
+              {paymentError && <div className="status error">{paymentError}</div>}
+              <div style={{display: 'flex', gap: 8, marginTop: 12}}>
+                <button className="primaryBtn" type="button" onClick={startCheckout} disabled={billingProcessing}>
+                  {billingProcessing ? "Starting checkout..." : `Start ${PREMIUM_PLAN.name}`}
+                </button>
+                <button className="secondaryBtn" type="button" onClick={closeBillingModal} disabled={billingProcessing}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
