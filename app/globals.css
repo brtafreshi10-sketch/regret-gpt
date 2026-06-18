@@ -850,3 +850,24 @@ historyLink:hover strong {
     padding: 14px;
   }
 }
+
+/* Auth modal */
+.authOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,6,23,0.6);
+  z-index: 60;
+}
+.authModal {
+  background: var(--surface-strong);
+  padding: 24px;
+  border-radius: 12px;
+  width: min(420px, 96%);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.authModal h3 { margin-top: 0; }
+.authModal label { display: block; margin-top: 12px; font-weight: 600; }
+.authModal input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 8px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-color); }

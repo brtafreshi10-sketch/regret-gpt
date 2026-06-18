@@ -39,6 +39,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [dark, setDark] = useState(false);
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [authModal, setAuthModal] = useState<null | "login" | "signup">(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | Result["category"]>("all");
   const [historySearch, setHistorySearch] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
@@ -49,7 +53,10 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-    const savedHistory = localStorage.getItem("regret-history");
+    const savedUser = localStorage.getItem("regret-current-user");
+    if (savedUser) setCurrentUser(savedUser);
+    const historyKey = `regret-history-${savedUser ?? "public"}`;
+    const savedHistory = localStorage.getItem(historyKey);
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -109,7 +116,8 @@ export default function Home() {
     setHistory((current) => {
       const next = [entry, ...current.filter((historyItem) => historyItem.id !== entry.id)].slice(0, 10);
       if (typeof window !== "undefined") {
-        localStorage.setItem("regret-history", JSON.stringify(next));
+        const key = `regret-history-${currentUser ?? "public"}`;
+        localStorage.setItem(key, JSON.stringify(next));
       }
       return next;
     });
@@ -178,8 +186,69 @@ export default function Home() {
   function clearHistory() {
     setHistory([]);
     if (typeof window !== "undefined") {
-      localStorage.removeItem("regret-history");
+      const key = `regret-history-${currentUser ?? "public"}`;
+      localStorage.removeItem(key);
     }
+  }
+
+  /* Simple client-side auth (localStorage-backed) */
+  function getUsers(): Record<string, { password: string; createdAt: string }> {
+    try {
+      const raw = localStorage.getItem("regret-users");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveUsers(u: Record<string, { password: string; createdAt: string }>) {
+    localStorage.setItem("regret-users", JSON.stringify(u));
+  }
+
+  function signup() {
+    setError("");
+    if (!authEmail || !authPassword) {
+      setError("Please provide email and password to sign up.");
+      return;
+    }
+    const users = getUsers();
+    if (users[authEmail]) {
+      setError("An account with this email already exists.");
+      return;
+    }
+    users[authEmail] = { password: authPassword, createdAt: new Date().toISOString() };
+    saveUsers(users);
+    localStorage.setItem("regret-current-user", authEmail);
+    setCurrentUser(authEmail);
+    setAuthModal(null);
+  }
+
+  function login() {
+    setError("");
+    if (!authEmail || !authPassword) {
+      setError("Please enter email and password to log in.");
+      return;
+    }
+    const users = getUsers();
+    const user = users[authEmail];
+    if (!user || user.password !== authPassword) {
+      setError("Invalid email or password.");
+      return;
+    }
+    localStorage.setItem("regret-current-user", authEmail);
+    setCurrentUser(authEmail);
+    setAuthModal(null);
+    // load user-specific history
+    try {
+      const key = `regret-history-${authEmail}`;
+      const raw = localStorage.getItem(key);
+      if (raw) setHistory(JSON.parse(raw));
+    } catch {}
+  }
+
+  function logout() {
+    localStorage.removeItem("regret-current-user");
+    setCurrentUser(null);
   }
 
   function handleHistorySelect(item: Result) {
@@ -294,9 +363,22 @@ export default function Home() {
             </p>
           </div>
 
-          <button className="settingsBtn" onClick={toggleTheme}>
-            {dark ? "☀️ Light" : "🌙 Dark"}
-          </button>
+          <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
+            {currentUser ? (
+              <>
+                <span aria-live="polite">Signed in as <strong>{currentUser}</strong></span>
+                <button className="secondaryBtn" onClick={logout}>Log out</button>
+              </>
+            ) : (
+              <>
+                <button className="secondaryBtn" onClick={() => setAuthModal('login')}>Log in</button>
+                <button className="primaryBtn" onClick={() => setAuthModal('signup')}>Sign up</button>
+              </>
+            )}
+            <button className="settingsBtn" onClick={toggleTheme}>
+              {dark ? "☀️ Light" : "🌙 Dark"}
+            </button>
+          </div>
         </header>
 
         <section className="inputCard">
@@ -380,6 +462,29 @@ export default function Home() {
             </div>
             <ResultCard data={result} />
           </section>
+        )}
+
+        {authModal && (
+          <div className="authOverlay" role="dialog" aria-modal="true">
+            <div className="authModal">
+              <h3>{authModal === 'signup' ? 'Create an account' : 'Log in'}</h3>
+              <label>
+                Email
+                <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} type="email" />
+              </label>
+              <label>
+                Password
+                <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} type="password" />
+              </label>
+              {error && <div className="status error" role="alert">{error}</div>}
+              <div style={{display: 'flex', gap: 8, marginTop: 12}}>
+                <button className="primaryBtn" onClick={() => (authModal === 'signup' ? signup() : login())}>
+                  {authModal === 'signup' ? 'Create account' : 'Log in'}
+                </button>
+                <button className="secondaryBtn" onClick={() => setAuthModal(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
         )}
 
         <section className="statsGrid">
