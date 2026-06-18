@@ -172,7 +172,8 @@ export default function Home() {
     setHistory((current) => {
       const next = current.filter((item) => item.id !== id);
       if (typeof window !== "undefined") {
-        localStorage.setItem("regret-history", JSON.stringify(next));
+        const key = `regret-history-${currentUser ?? "public"}`;
+        localStorage.setItem(key, JSON.stringify(next));
       }
       return next;
     });
@@ -249,6 +250,7 @@ export default function Home() {
   function logout() {
     localStorage.removeItem("regret-current-user");
     setCurrentUser(null);
+    setHistory([]);
   }
 
   function handleHistorySelect(item: Result) {
