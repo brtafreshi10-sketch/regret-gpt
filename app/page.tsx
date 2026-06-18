@@ -138,10 +138,22 @@ export default function Home() {
         }
       }
 
+      const htmlClass = document.documentElement.classList;
       if (savedTheme === 'dark' || savedTheme === 'light') {
-        setDark(savedTheme === "dark");
+        const isDark = savedTheme === "dark";
+        setDark(isDark);
+        if (isDark) {
+          htmlClass.add('dark');
+        } else {
+          htmlClass.remove('dark');
+        }
       } else {
         setDark(prefersDark);
+        if (prefersDark) {
+          htmlClass.add('dark');
+        } else {
+          htmlClass.remove('dark');
+        }
       }
       setHydrated(true);
     });
@@ -583,6 +595,7 @@ export default function Home() {
     const next = !dark;
     setDark(next);
     if (typeof window !== "undefined") {
+      document.documentElement.classList.toggle("dark", next);
       localStorage.setItem("theme", next ? "dark" : "light");
     }
   }
