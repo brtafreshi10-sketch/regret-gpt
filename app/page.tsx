@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ResultCard from "@/components/ResultCard";
+import TextInput from "@/components/TextInput";
 
 type Result = {
   id: string;
@@ -13,7 +14,6 @@ type Result = {
   advice: string;
   category: "money" | "relationships" | "school" | "health" | "other";
   note?: string;
-  favorite?: boolean;
   createdAt?: string;
 };
 
@@ -44,7 +44,6 @@ export default function Home() {
   const [copyStatus, setCopyStatus] = useState("");
   const [note, setNote] = useState("");
   const [noteStatus, setNoteStatus] = useState("");
-  const [showFavorites, setShowFavorites] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -79,17 +78,6 @@ export default function Home() {
       setHydrated(true);
     });
   }, []);
-
-  function amplifyRegretScore(score: number) {
-    const base = Number.isFinite(score) ? Math.round(score) : 0;
-
-    if (base < 25) return Math.min(100, base + 35);
-    if (base < 45) return Math.min(100, base + 28);
-    if (base < 60) return Math.min(100, base + 20);
-    if (base < 75) return Math.min(100, base + 14);
-    if (base < 90) return Math.min(100, base + 8);
-    return base;
-  }
 
   function saveHistory(item: Result) {
     const entry = {
@@ -133,7 +121,6 @@ export default function Home() {
 
       const withId: Result = {
         ...data,
-        regret_score: amplifyRegretScore(data.regret_score),
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
       };
@@ -164,22 +151,6 @@ export default function Home() {
       setResult(null);
       setNote("");
       setNoteStatus("");
-    }
-  }
-
-  function toggleFavorite(id: string) {
-    setHistory((current) => {
-      const next = current.map((item) =>
-        item.id === id ? { ...item, favorite: !item.favorite } : item
-      );
-      if (typeof window !== "undefined") {
-        localStorage.setItem("regret-history", JSON.stringify(next));
-      }
-      return next;
-    });
-
-    if (result?.id === id) {
-      setResult({ ...result, favorite: !result.favorite });
     }
   }
 
@@ -253,10 +224,9 @@ export default function Home() {
     return history.filter((item) => {
       const matchCategory = categoryFilter === "all" || item.category === categoryFilter;
       const matchSearch = historySearch.trim().length === 0 || item.title.toLowerCase().includes(historySearch.trim().toLowerCase());
-      const matchFavorite = !showFavorites || item.favorite;
-      return matchCategory && matchSearch && matchFavorite;
+      return matchCategory && matchSearch;
     });
-  }, [categoryFilter, history, historySearch, showFavorites]);
+  }, [categoryFilter, history, historySearch]);
 
   const stats = useMemo(() => {
     const total = history.length;
@@ -316,10 +286,10 @@ export default function Home() {
             <span className="counter">{text.length}/300</span>
           </div>
 
-          <textarea
+          <TextInput
             placeholder="Example: Should I quit my job and try freelancing?"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            setValue={setText}
             maxLength={300}
             rows={6}
             onKeyDown={(e) => {
@@ -363,13 +333,6 @@ export default function Home() {
               <button className="primaryBtn" onClick={copyAnalysis}>Copy result</button>
               <button className="secondaryBtn" type="button" onClick={downloadAnalysis}>Download report</button>
               <button className="secondaryBtn" type="button" onClick={shareAnalysis}>Share</button>
-              <button
-                className={`secondaryBtn ${result.favorite ? "activeFavorite" : ""}`}
-                type="button"
-                onClick={() => toggleFavorite(result.id)}
-              >
-                {result.favorite ? "★ Favorited" : "☆ Favorite"}
-              </button>
               <button className="secondaryBtn" type="button" onClick={() => analyze(result.title)}>
                 Re-run
               </button>
@@ -377,11 +340,11 @@ export default function Home() {
             {copyStatus && <div className="status success">{copyStatus}</div>}
             <div className="noteSection">
               <h3 className="sectionTitle">Personal note</h3>
-              <textarea
+              <TextInput
                 className="noteTextarea"
                 placeholder="Write a follow-up thought, reminder, or why this decision matters to you."
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                setValue={setNote}
                 rows={4}
               />
               <div className="row actionRow">
@@ -433,13 +396,6 @@ export default function Home() {
                   {label}
                 </button>
               ))}
-              <button
-                type="button"
-                className={`pill ${showFavorites ? "active" : ""}`}
-                onClick={() => setShowFavorites((current) => !current)}
-              >
-                {showFavorites ? "Showing favorites" : "Show favorites"}
-              </button>
             </div>
             <input
               type="search"
@@ -463,7 +419,7 @@ export default function Home() {
                   >
                     <div>
                       <strong>{item.title}</strong>
-                      <div className="historyMeta">{item.category} · {formatDate(item.createdAt)}</div>
+                      <div className="historyMeta">{CATEGORY_LABELS[item.category]} · {formatDate(item.createdAt)}</div>
                     </div>
                   </button>
                   <button

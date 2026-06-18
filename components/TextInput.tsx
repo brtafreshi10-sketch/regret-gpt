@@ -3,16 +3,29 @@
 export default function TextInput({
   value,
   setValue,
+  placeholder,
+  rows = 6,
+  className = "",
+  maxLength,
+  onKeyDown,
 }: {
   value: string;
   setValue: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+  maxLength?: number;
+  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 }) {
   return (
     <textarea
-      className="w-full h-32 p-4 rounded-xl bg-zinc-900 border border-zinc-700 focus:outline-none focus:border-blue-500 transition"
-      placeholder="Describe your decision..."
+      className={className}
+      placeholder={placeholder}
       value={value}
+      rows={rows}
+      maxLength={maxLength}
       onChange={(e) => setValue(e.target.value)}
+      onKeyDown={onKeyDown}
     />
   );
 }

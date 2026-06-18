@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "next lint",
     "cap:add:ios": "npx cap add ios",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
@@ -17,7 +17,6 @@
     "@capacitor/ios": "^8.4.0",
     "groq-sdk": "^1.2.1",
     "next": "^15.1.0",
-    "openai": "^6.42.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
